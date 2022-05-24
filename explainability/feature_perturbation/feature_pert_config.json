@@ -1,0 +1,17 @@
+{
+    "avg_graph_structure": false,
+    "analysis_desc": "",
+    "batch_size": 800,
+    "dataset_npz_path": "./10_continents_dataset_v19_node_pert.npz",
+    "dataset_split": "entire-dataset-smooth",
+    "embedding_dim": 10,
+    "lstm_type": "vanilla",
+    "model_architecture": "DCSAGE",
+    "num_models": 100,
+    "num_node_features": 2,
+    "recursive_pred_len": 30,
+    "save_dir": "./feature-pert-runs",
+    "training_path": "/Users/syedrizvi/Desktop/Projects/GNN_Project/DCSAGE/Training-Code/training-runs-multiple-models/",
+    "training_run": "2022-04-13-21_31_29",
+    "window": 7
+}

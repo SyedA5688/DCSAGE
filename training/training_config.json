@@ -1,0 +1,19 @@
+{
+  "avg_graph_structure": false,
+  "batch_size": 800,
+  "dataset_npz_path": "./datasets/10_continents_dataset_v19_training.npz",
+  "early_stopping_patience": -1,
+  "epochs": 100,
+  "embedding_dim": 10,
+  "experiment_desc": "Debugging 1 models of DCGAT, 1 node feature, new plot fonts.",
+  "learning_rate": 0.01,
+  "lr_scheduler_patience": 40,
+  "lstm_type": "vanilla",
+  "loss_function": "mase2_loss",
+  "model_architecture": "DCGAT",
+  "num_node_features": 1,
+  "optimizer": "Adam",
+  "save_dir": "./training-runs-multiple-models",
+  "visual_freq": 5,
+  "window": 7
+}
