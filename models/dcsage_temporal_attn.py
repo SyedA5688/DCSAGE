@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch_geometric.data import Data
 from torch_geometric.nn.norm import GraphNorm
-from networks.weight_sage import WeightedSAGEConv
+from models.weight_sage import WeightedSAGEConv
 
 import os
 import math
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 from sklearn.manifold import TSNE
-from util import plot_tsne_reduced_embeddings
+from utils.training_utils import plot_tsne_reduced_embeddings
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

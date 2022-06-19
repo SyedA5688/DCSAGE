@@ -5,8 +5,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch_geometric.data import Data
 from torch_geometric.nn.norm import GraphNorm
-from networks.weight_sage import WeightedSAGEConv
-# from torch_geometric.nn import GATConv
+from models.weight_sage import WeightedSAGEConv
 
 import os
 import math
@@ -16,22 +15,14 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 from sklearn.manifold import TSNE
-from util import plot_tsne_reduced_embeddings
+from utils.training_utils import plot_tsne_reduced_embeddings
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class DynamicAdjSAGE(torch.nn.Module):
     """
-    Architecture
-    1 Weighted GraphSAGE layer -> 1 Weigted GraphSAGE layer -> concat outputs of both GraphSAGE layers 
-        -> 1 LSTM cell -> concat LSTM cell hidden state output for N+1 day and original input features
-        X for N days -> MLP with ReLU activation.
-
-    Architecture expects to receive 1 day graphs, so that adjacency matrix can change every day. N 
-    1-day graphs passed through, then take model output for N+1 day. 
-
-    Constructor Arguments:
+    Arguments:
         node_features: number of features each node in 1-day graph contains
         emd_dim: embedding dimension that WeightedGraphSAGE layers will output
         window_size: number of 1-day graphs that will be passed through network before predicting next day

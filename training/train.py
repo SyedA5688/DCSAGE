@@ -326,9 +326,9 @@ def main():
 
 if __name__ == "__main__":
     # Read in training options from config json file
-    with open("./covid10countries_config.json", "r") as f:
+    with open("./training/training_config.json", "r") as f:
         args = json.load(f)
-    args["save_dir"] = "./training-runs"
+    args["save_dir"] = "./training/training-runs"
     
     assert args["model_architecture"] in ["DCSAGE", "DCSAGE_v2", "DCGAT", "DCSAGE_Temporal_Attn", "DCGCN", "DCGIN", "DCSAGE_GRU"]
     
@@ -344,14 +344,13 @@ if __name__ == "__main__":
         os.mkdir(os.path.join(SAVE_PATH, "visuals", "val_corr_plots"))
         os.mkdir(os.path.join(SAVE_PATH, "python_file_saves"))
 
-    os.system("cp train.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp test.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp covid10countries_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp recursive_prediction.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp networks/dcsage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp networks/dcsage_v2.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp networks/peephole_lstm.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp networks/weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/train.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/test.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/training_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/recursive_prediction.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp dataloader/training_dataloader.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp models/dcsage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp models/weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
 
     # Define here so have access in case training is stopped early
     train_losses = []

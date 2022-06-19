@@ -355,7 +355,7 @@ def plot_continent_pred_vs_ground_truth_vs_extended_feedback_pred_trend(model_pr
     assert len(model_preds) == len(labels) == len(extended_feedback_preds), "Trends have different lengths"
     continents = ["Africa", "North America", "South America", "Oceania", "Eastern Europe", "Western Europe", "Middle East", "South Asia", "Southeast-East Asia", "Central Asia"]
     
-    fig, ax = plt.subplots(nrows=2, ncols=5, figsize=(25,10))
+    fig, ax = plt.subplots(nrows=2, ncols=5, figsize=(18,10))
     plt.rcParams.update({'font.size': 18})
     fig.suptitle("DCSAGE Recursive, Regular Prediction, and Ground Truth Trends")
 

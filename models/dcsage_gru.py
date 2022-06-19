@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch_geometric.data import Data
 from torch_geometric.nn.norm import GraphNorm
-from networks.weight_sage import WeightedSAGEConv
+from models.weight_sage import WeightedSAGEConv
 
 import os
 import math

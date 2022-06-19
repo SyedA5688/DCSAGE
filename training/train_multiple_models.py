@@ -309,9 +309,9 @@ def multiprocessing_train_handler(args, SAVE_PATH, VISUALS_PATH, model_idx):
 if __name__ == "__main__":
     mp.set_start_method('spawn')
     print("Parent process", os.getpid())
-    with open("./covid10countries_config.json", "r") as f:
+    with open("./training/training_config.json", "r") as f:
         args = json.load(f)
-    args["num_models"] = 30  # 100
+    args["num_models"] = 4  # 100
 
     assert args["model_architecture"] in ["DCSAGE", "DCSAGE_v2", "DCGAT", "DCSAGE_Temporal_Attn", "DCGCN", "DCGIN", "DCSAGE_GRU"]
     if not os.path.exists(args["save_dir"]):
@@ -324,13 +324,13 @@ if __name__ == "__main__":
         os.mkdir(SAVE_PATH)
         os.mkdir(os.path.join(SAVE_PATH, "python_file_saves"))
 
-    os.system("cp train_multiple_models.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp test.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp recursive_prediction.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp networks/dcsage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp networks/weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp covid_10country_dataset.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp covid10countries_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/train_multiple_models.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/training_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/test.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp training/recursive_prediction.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp dataloader/training_dataloader.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp models/dcsage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp models/weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
 
     # Multiple model training setup
     os.mkdir(os.path.join(SAVE_PATH, "visuals"))

@@ -1,3 +1,11 @@
+*/__pycache__
 .DS_Store
 .vscode
 data
+training/training-runs
+training/training-runs-multiple-models
+training/__pycache__
+
+
+
+
