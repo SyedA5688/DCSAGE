@@ -5,120 +5,11 @@ import multiprocessing as mp
 
 import torch
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from torch_geometric.data import Data
-from typing import Union, Tuple
-from torch.nn import Linear
-from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.typing import OptPairTensor, Adj, Size
 
-from dcsage import DynamicAdjSAGE
-
-
-class Covid10CountriesPerturbedDataset(Dataset):
-    def __init__(self, dataset_npz_path, SENSITIVITY_ORDER_IDX, window_size=7, data_split="entire-dataset-smooth", avg_graph_structure=False, perturb_node_steps=[-0.25,0,0,0,0,0,0,0,0,0]):
-        ###########
-        # Load data
-        ###########
-        if data_split == "entire-dataset-smooth" and not avg_graph_structure:
-            feature_matrix = np.load(dataset_npz_path)["feature_matrix_smooth"]
-            flight_matrix = np.load(dataset_npz_path)["flight_matrix_log10_scaled"]
-        elif data_split == "entire-dataset-smooth" and avg_graph_structure:
-            feature_matrix = np.load(dataset_npz_path)["feature_matrix_smooth"]
-            flight_matrix = np.load(dataset_npz_path)["flight_matrix_unscaled"]
-        else:
-            raise RuntimeError("Unknown dataset split selected")
-        
-        assert feature_matrix.shape[0] == flight_matrix.shape[0], "Node feature and edge attribute matrices do not match"
-        
-        ################################################################
-        # Perturb chosen country by deleting incoming and outgoing edges
-        ################################################################
-        for node_idx, perturb_step in zip(SENSITIVITY_ORDER_IDX, perturb_node_steps):
-            flight_matrix[:, node_idx, :] *= (1 + perturb_step)
-            flight_matrix[:, :, node_idx] *= (1 + perturb_step)
-
-        self.feature_matrix = feature_matrix
-        self.flight_matrix = flight_matrix
-
-        ###############################
-        # Create sliding window dataset
-        ###############################
-        all_window_node_feat = []
-        all_window_edge_attr = []
-        all_window_edge_idx = []
-        all_window_labels = []
-        
-        for day_idx in range(0, len(feature_matrix) - window_size):
-            window_node_feat = []
-            window_edge_idx = []
-            window_edge_attr = []
-
-            for sub_day in range(day_idx, day_idx + window_size):
-                node_data = feature_matrix[sub_day]
-
-                edges_idx_array = np.full((2, 100), -1)
-                edges_attr_array = np.full((100), -1).astype(np.float32)
-                
-                if avg_graph_structure:
-                    # Calculate smoothened graph structure across window
-                    smoothened_window_flight_matrix = flight_matrix[day_idx: day_idx + window_size].mean(axis=0)  # Shape [10, 10]
-                    # Log10 scale now that adjacency is averaged
-                    for row in range(len(smoothened_window_flight_matrix)):
-                        for col in range(len(smoothened_window_flight_matrix[row])):
-                            if smoothened_window_flight_matrix[row][col] > 0:
-                                smoothened_window_flight_matrix[row][col] = np.log10(smoothened_window_flight_matrix[row][col])
-                    
-                    edge_idx = 0
-                    for row in range(len(smoothened_window_flight_matrix)):
-                        for col in range(len(smoothened_window_flight_matrix[row])):
-                            if smoothened_window_flight_matrix[row][col] > 0:
-                                edges_idx_array[0][edge_idx] = row  # row is source node
-                                edges_idx_array[1][edge_idx] = col  # col is dest node
-                                edges_attr_array[edge_idx] = smoothened_window_flight_matrix[row][col]
-                                edge_idx += 1
-                else:
-                    edge_idx = 0
-                    for row in range(len(flight_matrix[sub_day])):
-                        for col in range(len(flight_matrix[sub_day][row])):
-                            if flight_matrix[sub_day][row][col] > 0:
-                                edges_idx_array[0][edge_idx] = row
-                                edges_idx_array[1][edge_idx] = col
-                                edges_attr_array[edge_idx] = flight_matrix[sub_day][row][col]
-                                edge_idx += 1
-                
-                edges_attr_array = np.expand_dims(edges_attr_array, axis=-1)
-
-                window_node_feat.append(np.expand_dims(node_data, axis=0))
-                window_edge_idx.append(np.expand_dims(edges_idx_array, axis=0))
-                window_edge_attr.append(np.expand_dims(edges_attr_array, axis=0))
-            
-            window_node_feat = np.concatenate(window_node_feat, axis=0)  # shape (14, 10, 3)
-            window_edge_idx = np.concatenate(window_edge_idx, axis=0)  # Shape (14, 2, *num_edges=100)
-            window_edge_attr = np.concatenate(window_edge_attr, axis=0)  # Shape (14, *num_edges=100, 1)
-            window_labels = feature_matrix[day_idx + window_size, :, 1]  # Shape (10)
-
-            all_window_node_feat.append(np.expand_dims(window_node_feat, axis=0))
-            all_window_edge_attr.append(np.expand_dims(window_edge_attr, axis=0))
-            all_window_edge_idx.append(np.expand_dims(window_edge_idx, axis=0))
-            all_window_labels.append(np.expand_dims(window_labels, axis=0))
-        
-        self.all_window_node_feat = np.concatenate(all_window_node_feat, axis=0)
-        self.all_window_edge_attr = np.concatenate(all_window_edge_attr, axis=0)
-        self.all_window_edge_idx = np.concatenate(all_window_edge_idx, axis=0)
-        self.all_window_labels = np.concatenate(all_window_labels, axis=0)  # shape (dataset_len, 10)
-
-    def __len__(self):
-        return len(self.all_window_labels)
-    
-    def __getitem__(self, index):
-        window_node_feat = self.all_window_node_feat[index].astype(np.float32)  # shape (14, 10, 3)
-        window_edge_idx = self.all_window_edge_idx[index]  # shape (14, 2, *num_edges=100)
-        window_edge_idx = torch.LongTensor(window_edge_idx)
-        window_edge_attr = self.all_window_edge_attr[index]  # shape (14, *num_edges=100, 1)
-        window_labels = self.all_window_labels[index]  # shape (10)
-        
-        return window_node_feat[:,:,1:2], window_edge_idx, window_edge_attr, window_labels
+from models.dcsage import DynamicAdjSAGE
+from dataloader.perturbation_policy_dataloader import Covid10CountriesPerturbedDataset
 
 
 #######################
@@ -196,12 +87,12 @@ def main():
     # Define Global Variables
     #########################
     CONTINENTS = ["Africa", "North America", "South America", "Oceania", "Eastern Europe", "Western Europe", "Middle East", "South Asia", "Southeast-East Asia", "Central Asia"]
-    TRAINING_EXPT_DIR = "/Users/syedrizvi/Desktop/Projects/GNN_Project/DCSAGE/Training-Code/training-runs-multiple-models/"
-    TRAINING_RUN = "2022-04-16-00_41_22"  # DCSAGE 7-day 100 models 1 feature
+    TRAINING_EXPT_DIR = "./training/training-runs-multiple-models/"
+    TRAINING_RUN = "2022-06-19-17_25_11"
     WINDOW_SIZE = 7
     RECURSIVE_WINDOW_LENGTH = 30
 
-    NODES_TO_PERTURB = 5  # 3 means that 1, 2, or 3 nodes might be perturbed
+    NODES_TO_PERTURB = 5  # Combinations of 1 node will be perturbed, then combos of 2 nodes, ... up to NODES_TO_PERTURB
     MODEL_IDXS = list(range(10))  # list(range(80, 100))  # List of model indices to use in analysis
 
     SENSITIVITY_ORDER = ["Western Europe", "North America", "Middle East", "Eastern Europe", "Southeast-East Asia", "Oceania", "South America", "South Asia", "Africa", "Central Asia"]
@@ -285,8 +176,6 @@ def main():
         pool.close()
         pool.join()
     
-    # For debugging
-    # perturbation_policy_search(args, all_dataloaders, model_idx=0)
     print("\nChild processes finished. Total multiple-model training time was {:.3f} minutes".format((time.time() - total_start_time) / 60.))
 
     # Callback has collected results from child processes, sort now by model index in tuple
