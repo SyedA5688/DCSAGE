@@ -7,15 +7,14 @@ from torch.utils.data import DataLoader
 from torch_geometric.data import Data
 from random import seed
 
-from util import *
-from networks.dcsage import DynamicAdjSAGE
-from networks.dcsage_gru import DCSAGE_GRU
-from networks.dcsage_v2 import DCSAGE_v2
-from networks.dcgat import DCGAT
-from networks.dcgcn import DCGCN
-from networks.dcgin import DCGIN
-from networks.dcsage_temporal_attn import DCSAGE_Temporal_Attn
-from covid_10country_perturb_dataset import Covid10CountriesUnperturbedDataset, Covid10CountriesPerturbedDataset
+from utils.node_perturbation_utils import *
+from models.dcsage import DynamicAdjSAGE
+from models.dcsage_gru import DCSAGE_GRU
+from models.dcgat import DCGAT
+from models.dcgcn import DCGCN
+from models.dcgin import DCGIN
+from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
+from dataloader.node_perturbation_dataloader import Covid10CountriesUnperturbedDataset, Covid10CountriesPerturbedDataset
 
 
 chosen_seed = 0
@@ -314,8 +313,6 @@ def main():
         model = DCGCN(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True, lstm_type=args["lstm_type"], name="DCGCN")
     elif args["model_architecture"] == "DCGIN":
         model = DCGIN(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True, lstm_type=args["lstm_type"], name="DCGIN")
-    elif args["model_architecture"] == "DCSAGE_v2":
-        model = DCSAGE_v2(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True)
     else:
         raise NotImplementedError("Model architecture not implemeted.")
 
@@ -333,6 +330,11 @@ def main():
 
 
 if __name__ == "__main__":
+    """
+    Note: Only run node_perturbation_analysis.py directly if you want to do perturbation analysis on a single
+    trained model. In most cases, you will instead want to run analysis on many models using the 
+    multiple_model_pert_analysis.py script.
+    """
     with open("/Users/syedrizvi/Desktop/Projects/GNN_Project/DCSAGE/Node-Perturbation/node_perturb_analysis_config.json", "r") as f:
         args = json.load(f)
     args["training_path"] = "/Users/syedrizvi/Desktop/Projects/GNN_Project/DCSAGE/Training-Code/training-runs/"

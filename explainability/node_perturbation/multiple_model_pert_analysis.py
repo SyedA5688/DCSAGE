@@ -8,15 +8,14 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader
 
-from util import *
-from networks.dcsage import DynamicAdjSAGE
-from networks.dcsage_gru import DCSAGE_GRU
-from networks.dcsage_v2 import DCSAGE_v2
-from networks.dcgat import DCGAT
-from networks.dcgcn import DCGCN
-from networks.dcgin import DCGIN
-from networks.dcsage_temporal_attn import DCSAGE_Temporal_Attn
-from covid_10country_perturb_dataset import Covid10CountriesUnperturbedDataset, Covid10CountriesPerturbedDataset
+from utils.node_perturbation_utils import *
+from models.dcsage import DynamicAdjSAGE
+from models.dcsage_gru import DCSAGE_GRU
+from models.dcgat import DCGAT
+from models.dcgcn import DCGCN
+from models.dcgin import DCGIN
+from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
+from dataloader.node_perturbation_dataloader import Covid10CountriesUnperturbedDataset, Covid10CountriesPerturbedDataset
 from node_perturbation_analysis import generate_perturbed_recursive_pred_dfs, generate_regular_recursive_pred_df
 
 chosen_seed = 0
@@ -58,8 +57,6 @@ def get_rolling_window_preds(args, SAVE_PATH, perturbed_dataloaders, unperturbed
         model = DCGCN(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True, lstm_type=args["lstm_type"], name="DCGCN")
     elif args["model_architecture"] == "DCGIN":
         model = DCGIN(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True, lstm_type=args["lstm_type"], name="DCGIN")
-    elif args["model_architecture"] == "DCSAGE_v2":
-        model = DCSAGE_v2(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True)
     else:
         raise NotImplementedError("Model architecture not implemeted.")
 
@@ -178,10 +175,9 @@ def main():
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
-    with open("/Users/syedrizvi/Desktop/Projects/GNN_Project/DCSAGE/Node-Perturbation/node_perturb_analysis_config.json", "r") as f:
+    with open("./explainability/node_perturbation/node_perturb_analysis_config.json", "r") as f:
         args = json.load(f)
-    args["save_dir"] = "/Users/syedrizvi/Desktop/Projects/GNN_Project/DCSAGE/Node-Perturbation/analysis-runs-multiple-models"
-    args["num_models"] = 30  # 100
+    args["num_models"] = 4  # 100
 
     if not os.path.exists(args["save_dir"]):
         os.mkdir(args["save_dir"])
@@ -192,10 +188,9 @@ if __name__ == "__main__":
         os.mkdir(SAVE_PATH)
         os.mkdir(os.path.join(SAVE_PATH, "python_file_saves"))
     
-    os.system("cp node_perturb_analysis_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp node_perturbation_analysis.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp multiple_model_pert_analysis.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp covid_10country_perturb_dataset.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp networks/weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/node_perturbation/node_perturb_analysis_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/node_perturbation/node_perturbation_analysis.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/node_perturbation/multiple_model_pert_analysis.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp dataloader/node_perturbation_dataloader.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
 
     main()
