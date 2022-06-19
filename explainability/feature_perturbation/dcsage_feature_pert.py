@@ -9,8 +9,8 @@ import pandas as pd
 from torch.utils.data import DataLoader
 from torch_geometric.data import Data
 
-from covid_feat_perturb_dataset import CovidUnperturbedDataset, CovidContainmentPerturbedDataset
-from dcsage import DynamicAdjSAGE
+from dataloader.feature_perturbation_dataloader import CovidUnperturbedDataset, CovidContainmentPerturbedDataset
+from models.dcsage import DynamicAdjSAGE
 
 
 def get_rolling_window_preds(args, SAVE_PATH, unperturbed_dataloader, min_containment_dataloader, max_containment_dataloader, model_idx):
@@ -217,7 +217,7 @@ def main():
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
-    with open("./feature_pert_config.json", "r") as f:
+    with open("./explainability/feature_perturbation/feature_pert_config.json", "r") as f:
         args = json.load(f)
 
     if not os.path.exists(args["save_dir"]):
