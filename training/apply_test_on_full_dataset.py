@@ -2,22 +2,25 @@ import os
 import json
 import torch
 
-from util import *
-from sklearn.manifold import TSNE
+from utils.training_utils import *
 from torch_geometric.data import Data
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-# from covid_10country_dataset import Covid10CountriesDataset
 
-from networks.dcsage import DynamicAdjSAGE
-from networks.dcsage_gru import DCSAGE_GRU
-from networks.dcsage_v2 import DCSAGE_v2
-from networks.dcgat import DCGAT
-from networks.dcgcn import DCGCN
-from networks.dcgin import DCGIN
-from networks.dcsage_temporal_attn import DCSAGE_Temporal_Attn
+from models.dcsage import DynamicAdjSAGE
+from models.dcsage_gru import DCSAGE_GRU
+from models.dcgat import DCGAT
+from models.dcgcn import DCGCN
+from models.dcgin import DCGIN
+from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+"""
+This script applies test on an already trained model. Use this script if a model was trained
+using train.py but for whatever reason did not complete the test evaluation at the end. This
+script will generate the same figures and test results.
+"""
 
 
 class Covid10NodePerturbationCountriesDataset(Dataset):

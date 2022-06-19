@@ -10,15 +10,15 @@ class Covid10CountriesDataset(Dataset):
     data/batch objects. This dataloader returns numpy matrices of the data, and the graph is created
     in the main loop of the training function
 
-    *Note: Since numpy doesn't support jagged arrays well, edge_idx_array will be initialized to 
-    shape (2, 100) with -1s filled in. Edge connections for each day are filled in, and the extra -1s
-    need to be removed in code later
+    Since Numpy doesn't support jagged arrays easily, edge_idx_array will be initialized to 
+    shape (2, max_num_edges) with -1s filled in. Edge connections for each day are filled in, and 
+    the extra -1s will be removed in code later to create variable number of edges per day
 
     Args:
-    - dataset_npz_path:         Path to numpy zip npz file containing node feature information
-    - window_size:              Number of previous days to feed into network before predicting next day.
-    - split:                    Portion of dataset to load for this dataset object (default for node perturbation: entire-dataset-smooth)
-    - avg_graph_structure:   Whether or not to load averaged graph edges over the window
+    - dataset_npz_path: Path to numpy zip npz file containing node feature information
+    - window_size: Number of previous days to feed into network before predicting next day.
+    - split: Portion of dataset to load for this dataset object (default for node perturbation: entire-dataset-smooth)
+    - avg_graph_structure: Whether or not to load averaged graph edges over the window
 
     returns:
     - __getitem__() will return four things:
