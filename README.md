@@ -28,6 +28,23 @@ cd training
 python train.py
 ```
 
+For training many DCSAGE models, run:
+
+```
+cd training
+python train_multiple_models.py
+```
 
 Note: For directory imports to work correctly, be sure to set your current 
 working directory to the top directory in this repository.
+
+
+### DCSAGE Node Perturbation
+To run the node perturbation experiment on trained DCSAGE models, first update the directory of the trained models in ./explainability/node_perturbation/node_perturb_analysis_config.json. Then run:
+
+```
+cd explainability/node_perturbation
+python node_perturbation_analysis.py
+```
+
+
