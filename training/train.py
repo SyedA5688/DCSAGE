@@ -31,6 +31,18 @@ def log_string(str1):
 
 
 def validation(model, val_loader, loss_func, epoch_idx, lowest_validation_loss):
+    """
+    This function runs validation on the current model and saved a colored scatterplot 
+    of predictions vs labels every X epochs. If model improves on validation set, then
+    the best_model checkpoint is overwritten.
+
+    Arguments:
+    - model: current model
+    - val_loader: validation dataset loader
+    - loss_func: loss function for experiment
+    - epoch_idx: current epoch index
+    - lowest_validation_loss: used to track overall model improvement
+    """
     with torch.no_grad():
         model.eval()
 
@@ -101,6 +113,18 @@ def validation(model, val_loader, loss_func, epoch_idx, lowest_validation_loss):
 
 
 def train(train_loader, val_loader, model):
+    """
+    This function runs the main training loop for the model. The general steps are:
+    1) Define loss function, optimizer
+    2) Log information
+    3) Main training loop iterating over batch, windows, and days in the dataset
+    4) Plotting of loss curves after training loop
+
+    Arguments:
+    - train_loader: training set dataloader
+    - val_loader: validation set dataloader
+    - model: model
+    """
     # ============ Define loss function ============
     name_to_loss_func = {
         "mape_loss": mape_loss,
@@ -229,6 +253,11 @@ def train(train_loader, val_loader, model):
 
 
 def main():
+    """
+    This function is the main driver of the train script. It defines the datasets, dataloaders,
+    model, and calls the training loop. After the training loop, it sets up directories and calls
+    the test evaluation functions.
+    """
     # =================== Define datasets ===================
     log_string("Loading dataset " + args['dataset_npz_path'])
 
