@@ -16,7 +16,7 @@ conda env create -f environment.yml
 or
 
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 
@@ -28,7 +28,7 @@ cd training
 python train.py
 ```
 
-For training many DCSAGE models, run:
+For training multiple DCSAGE models, define the number of models (e.g. 100) in ./training/train_multiple_models.py and run:
 
 ```
 cd training

@@ -23,20 +23,26 @@ from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-# def log_string(str1):
-#     # Helper function to print string to stdout and also record it to training log text file
-#     print(str1)
-#     logger.write(str1 + "\n")
-#     logger.flush()
-
-
 def validation(args, SAVE_PATH, model, val_loader, loss_func, epoch_idx, lowest_validation_loss, model_idx):
+    """
+    This function runs validation on the current model and saved a colored scatterplot 
+    of predictions vs labels every X epochs. If model improves on validation set, then
+    the best_model checkpoint is overwritten.
+
+    Arguments:
+    - args: arguments dictionary
+    - SAVE_PATH: path where validation results should be saved
+    - model: current model
+    - val_loader: validation dataset loader
+    - loss_func: loss function for experiment
+    - epoch_idx: current epoch index
+    - lowest_validation_loss: used to track overall model improvement
+    - model_idx: index number of model currently being evaluated
+    """
     with torch.no_grad():
         model.eval()
         
-        ################################
-        # Evaluate on validation dataset
-        ################################
+        # ============ Validation loop ============
         val_total_cost = 0
         val_predictions = []
         val_labels = []
@@ -59,6 +65,7 @@ def validation(args, SAVE_PATH, model, val_loader, loss_func, epoch_idx, lowest_
                     day_edge_idx = day_edge_idx[:, :cutoff_idx]
                     day_edge_attr = day_edge_attr[:cutoff_idx, :]
                     
+                    # Forward 1-day graph through model
                     day_graph = Data(x=day_node_feat, edge_index=day_edge_idx, edge_attr=day_edge_attr)
                     if args["model_architecture"] in ["DCSAGE", "DCGCN", "DCGIN"]:
                         y_hat, h_1, c_1, h_2, c_2 = model(day_graph, h_1, c_1, h_2, c_2, day_idx)
@@ -75,9 +82,7 @@ def validation(args, SAVE_PATH, model, val_loader, loss_func, epoch_idx, lowest_
                 val_predictions.append(y_hat)
                 val_labels.append(window_labels)
 
-        ############################
-        # Display validation results
-        ############################
+        # ============ Log validation loss ============
         val_avg_cost = val_total_cost / len(val_loader.dataset)
         if val_avg_cost < lowest_validation_loss:
             improved, improved_str = True, "(improved)"
@@ -86,9 +91,7 @@ def validation(args, SAVE_PATH, model, val_loader, loss_func, epoch_idx, lowest_
         
         # log_string('Validation Loss: {:.5f} {}'.format(float(val_avg_cost), improved_str) + "\n")
 
-        ####################################
-        # Save model if there is improvement
-        ####################################
+        # ============ Save model on improvement ============
         if improved:
             torch.save({
                 'epoch': epoch_idx,
@@ -102,6 +105,26 @@ def validation(args, SAVE_PATH, model, val_loader, loss_func, epoch_idx, lowest_
 
 
 def train(args, SAVE_PATH, VISUALS_PATH, train_loader, val_loader, model, model_idx):
+    """
+    This function runs the main training loop for the model, and is called once per
+    process using Python multiprocessing library. 
+
+    General steps:
+    1) Define loss function, optimizer
+    2) Log information
+    3) Main training loop iterating over batch, windows, and days in the dataset
+    4) Plotting of loss curves after training loop
+
+    Arguments:
+    - args: arguments dictionary
+    - SAVE_PATH: path where results should be saved
+    - VISUALS_PATH: path where saved visual figures should be savee
+    - train_loader: training set dataloader
+    - val_loader: validation set dataloader
+    - model: model
+    - model_idx: index number assigned to the model
+    """
+    # ============ Define loss function ============
     name_to_loss_func = {
         "mape_loss": mape_loss,
         "mse_loss": mse_loss,
@@ -117,14 +140,13 @@ def train(args, SAVE_PATH, VISUALS_PATH, train_loader, val_loader, model, model_
     assert args['loss_function'] in name_to_loss_func, "Unknown loss function specified in configuration file"
     loss_func = name_to_loss_func[args['loss_function']]
 
-    # Get optimizer
+    # ============ Define optimizer ============
     optimizer = None
     if args['optimizer'] == 'Adam':
         optimizer = torch.optim.Adam(model.parameters(), lr=args['learning_rate'])
         scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=args["lr_scheduler_patience"], threshold=0.1, threshold_mode='rel')
     elif args['optimizer'] == 'SGD':
         optimizer = torch.optim.SGD(model.parameters(), lr=args['learning_rate'], momentum=0.9)
-        # Scheduler threshold is 0.2, so it is looking for validation loss to go below 0.8 * best_val_loss_recorded
         scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=args["lr_scheduler_patience"], threshold=0.1, threshold_mode='rel')
     else:
         raise RuntimeError("Need to implement other optimizers besides Adam")
@@ -133,25 +155,23 @@ def train(args, SAVE_PATH, VISUALS_PATH, train_loader, val_loader, model, model_
     if not os.path.exists(model_visuals_path):
         os.mkdir(model_visuals_path)
 
-    ###############
-    # Training loop
-    ###############
+    # ============ Training loop ============
     lowest_validation_loss = 10000000
     lowest_train_loss = 10000000
     train_losses = []
     val_losses = []
 
     for epoch in range(args['epochs']):
-        # log_string("Epoch " + str(epoch) + " starting...")
         train_total_cost = 0
         model.train()
 
+        # If train_loader batch size > num dataset samples --> batch gradient descent
         for batch_window_node_feat, batch_window_edge_idx, batch_window_edge_attr, batch_window_labels in train_loader:
             """
-            batch_window_node_feat: torch.Tensor, shape [b, 14, 10, 3]
-            batch_window_edge_idx: torch.Tensor, shape [b, 14, 2, 100]
-            batch_window_edge_attr: torch.Tensor, shape [b, 14, 100, 1]
-            batch_window_labels: torch.Tensor, shape [b, 10]
+            batch_window_node_feat: torch.Tensor, shape [b, window_len, n_nodes, n_features]
+            batch_window_edge_idx: torch.Tensor, shape [b, window_len, 2, 100]
+            batch_window_edge_attr: torch.Tensor, shape [b, window_len, 100, 1]
+            batch_window_labels: torch.Tensor, shape [b, n_nodes]
             """
             batch_len = len(batch_window_node_feat)
             total_batch_cost = 0
@@ -174,6 +194,7 @@ def train(args, SAVE_PATH, VISUALS_PATH, train_loader, val_loader, model, model_
                     day_edge_idx = day_edge_idx[:, :cutoff_idx]
                     day_edge_attr = day_edge_attr[:cutoff_idx, :]
                     
+                    # Forward 1-day graph through model
                     day_graph = Data(x=day_node_feat, edge_index=day_edge_idx, edge_attr=day_edge_attr)
                     if args["model_architecture"] in ["DCSAGE", "DCGCN", "DCGIN"]:
                         y_hat, h_1, c_1, h_2, c_2 = model(day_graph, h_1, c_1, h_2, c_2, day_idx)
@@ -186,6 +207,7 @@ def train(args, SAVE_PATH, VISUALS_PATH, train_loader, val_loader, model, model_
                     else:
                         y_hat = model(day_graph, day_idx, target_seq=window_labels)
 
+                # Sum loss over each day in window
                 total_batch_cost += loss_func(y_hat, window_labels)
                 train_total_cost += loss_func(y_hat, window_labels)
             
@@ -198,18 +220,12 @@ def train(args, SAVE_PATH, VISUALS_PATH, train_loader, val_loader, model, model_
                 # model.visualize_activations(args, train_loader, "Train", model_visuals_path, epoch)
             optimizer.step()
 
+        # ============ Calculate training loss ============
         train_avg_cost = train_total_cost / len(train_loader.dataset)
         scheduler.step(train_avg_cost)
         train_losses.append(float(train_avg_cost))
 
-        # if train_avg_cost < lowest_train_loss:
-        #     train_improved_str = "(improved)"
-        #     lowest_train_loss = train_avg_cost
-        # else:
-        #     train_improved_str = ""
-
-        # log_string('Epoch: {:03d}, Learning rate: {}, Train Loss: {:.5f} {}'.format(epoch, optimizer.param_groups[0]['lr'], float(train_avg_cost), train_improved_str))
-
+        # ============ Validation ============
         validation_avg_cost, lowest_validation_loss, val_improved = validation(args, SAVE_PATH, model, val_loader, loss_func, epoch, lowest_validation_loss, model_idx)
         val_losses.append(float(validation_avg_cost))                
     
@@ -218,17 +234,18 @@ def train(args, SAVE_PATH, VISUALS_PATH, train_loader, val_loader, model, model_
 
 def multiprocessing_train_handler(args, SAVE_PATH, VISUALS_PATH, model_idx):
     """
-    This function parallelizes the training of one model. One process will call this handler function,
-    and that process will train 1 DCSAGE model.
+    This function parallelizes the training of one model. Each process will call this handler function 
+    once, training 1 DCSAGE model.
 
     Args:
         - args:         arguments dictionary from covid10country_config.json
         - SAVE_PATH:    save directory for all models
+        - VISUALS_PATH: save directory for all generated figures
         - model_idx:    index of model being trained by this process
     """
     print("Process", os.getpid(), ", Model", model_idx)
 
-    # log_string("Loading dataset " + args['dataset_npz_path'])
+    # =================== Define datasets ===================
     train_dataset = Covid10CountriesDataset(
         dataset_npz_path=args['dataset_npz_path'],
         window_size=args['window'], 
@@ -247,22 +264,11 @@ def multiprocessing_train_handler(args, SAVE_PATH, VISUALS_PATH, model_idx):
         data_split="test-unsmooth", 
         avg_graph_structure=args["avg_graph_structure"])
 
-    # log_string("Length of train dataset: " + str(len(train_dataset)))
-    # log_string("Length of validation dataset: " + str(len(val_dataset)))
-    # log_string("Length of test unsmooth dataset: " + str(len(test_dataset_unsmooth)) + "\n")
-
     train_dataloader = DataLoader(train_dataset, batch_size=args['batch_size'], shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=args['batch_size'], shuffle=False)
     test_unsmooth_dataloader = DataLoader(test_dataset_unsmooth, batch_size=args['batch_size'], shuffle=False)
 
-    # log_string("Experiment description:\n" + args['experiment_desc'] + "\n")
-    # log_string("Training configuration:")
-    # for key in args:
-    #     if key != "experiment_desc":
-            # log_string(key + ": " + str(args[key]))
-    # log_string("\n\n")
-
-    # Define model
+    # ============= Define model =============
     if args["model_architecture"] == "DCSAGE":
         model = DynamicAdjSAGE(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True, lstm_type=args["lstm_type"], name="DASAGE")
     elif args["model_architecture"] == "DCSAGE_GRU":
@@ -277,19 +283,17 @@ def multiprocessing_train_handler(args, SAVE_PATH, VISUALS_PATH, model_idx):
         model = DCGIN(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True, lstm_type=args["lstm_type"], name="DCGIN")
     else:
         raise NotImplementedError("Model architecture not implemeted.")
-    
-    # log_string("---" * 30 + "\nBeginning training for model " + str(model_idx) + ":\n")
-    # log_string("Model architecture:\n" + str(model) + "\n")
-    # start_time = time.time()
 
+    # ================ Training loop ================
     train(args, SAVE_PATH, VISUALS_PATH, train_dataloader, val_dataloader, model, model_idx)
-    # log_string("Model training time was {:.3f} minutes.\n\n\n".format((time.time() - start_time) / 60.))
-    
+
+    # ============ Create directories for test evaluations ============
     model_path = os.path.join(SAVE_PATH, "model_" + str(model_idx) + ".pth")
     recursive_test_path = os.path.join(SAVE_PATH, "recursive_preds", "model_" + str(model_idx))
     test_unsmooth_path = os.path.join(SAVE_PATH, "test_unsmooth", "model_" + str(model_idx))
     os.mkdir(test_unsmooth_path)
 
+    # Run test evaluation
     test(
         model_path, 
         args, 
@@ -297,6 +301,7 @@ def multiprocessing_train_handler(args, SAVE_PATH, VISUALS_PATH, model_idx):
         test_unsmooth_path, 
         split_name="Test_Unsmooth")
 
+    # Run recursive prediction evaluation
     recursive_test(
         saved_preds_dir=test_unsmooth_path,
         args=args,
@@ -308,15 +313,20 @@ def multiprocessing_train_handler(args, SAVE_PATH, VISUALS_PATH, model_idx):
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
+
+    # ============ Read in training options from config file ============
     print("Parent process", os.getpid())
     with open("./training/training_config.json", "r") as f:
         args = json.load(f)
-    args["num_models"] = 4  # 100
+
+    # Define number of models to train
+    args["num_models"] = 100
 
     assert args["model_architecture"] in ["DCSAGE", "DCSAGE_v2", "DCGAT", "DCSAGE_Temporal_Attn", "DCGCN", "DCGIN", "DCSAGE_GRU"]
     if not os.path.exists(args["save_dir"]):
         os.mkdir(args["save_dir"])
     
+    # ============ Create training experiment directories ============
     date = datetime.datetime.now().strftime('%Y-%m-%d-%H_%M_%S')
     SAVE_PATH = os.path.join(args["save_dir"], date)
     VISUALS_PATH = os.path.join(SAVE_PATH, "visuals")
@@ -324,6 +334,7 @@ if __name__ == "__main__":
         os.mkdir(SAVE_PATH)
         os.mkdir(os.path.join(SAVE_PATH, "python_file_saves"))
 
+    # ============ Copy files to experiment directory for record ============
     os.system("cp training/train_multiple_models.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
     os.system("cp training/training_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
     os.system("cp training/test.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
@@ -332,14 +343,15 @@ if __name__ == "__main__":
     os.system("cp models/dcsage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
     os.system("cp models/weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
 
-    # Multiple model training setup
+    # ============ Set up directories for multiple model training ============
     os.mkdir(os.path.join(SAVE_PATH, "visuals"))
     os.mkdir(os.path.join(SAVE_PATH, "test_unsmooth"))
     os.mkdir(os.path.join(SAVE_PATH, "recursive_preds"))
     os.mkdir(os.path.join(SAVE_PATH, "loss_curves"))
     total_start_time = time.time()
 
-    # Multiprocessing
+    
+    # ============ Multiprocessing handler ============
     with mp.Pool(processes=mp.cpu_count() - 2) as pool:
         for model_idx in range(args["num_models"]):
             pool.apply_async(
@@ -347,11 +359,6 @@ if __name__ == "__main__":
                 args=(args, SAVE_PATH, VISUALS_PATH, model_idx))
         pool.close()
         pool.join()
-    # multiprocessing_train_handler(args, SAVE_PATH, VISUALS_PATH, 0)  # For debugging
 
     print("\nTotal multiple-model training time was {:.3f} minutes".format((time.time() - total_start_time) / 60.))
-    
-    # log_string("\n\n\nTotal multiple-model training time was {:.3f} minutes".format((time.time() - total_start_time) / 60.))
-    # logger = open(os.path.join(SAVE_PATH, "training_log.txt"), "w")
-    # main()
-    # logger.close()
+
