@@ -16,7 +16,7 @@ from models.dcgcn import DCGCN
 from models.dcgin import DCGIN
 from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
 from dataloader.node_perturbation_dataloader import Covid10CountriesUnperturbedDataset, Covid10CountriesPerturbedDataset
-from node_perturbation_analysis import generate_perturbed_recursive_pred_dfs, generate_regular_recursive_pred_df
+from node_perturbation_helper_methods import perturbed_recursive_prediction_helper, unperturbed_recursive_prediction_helper
 
 chosen_seed = 0
 seed(chosen_seed)
@@ -42,9 +42,8 @@ def get_rolling_window_preds(args, SAVE_PATH, perturbed_dataloaders, unperturbed
         - model idx:                Index of model to load and do perturbation analysis with
     """
     print("Process", os.getpid(), ", Model", model_idx)
-    ############
-    # Load model
-    ############
+    
+    # ============ Load trained model ============
     if args["model_architecture"] == "DCSAGE":
         model = DynamicAdjSAGE(node_features=args['num_node_features'], emb_dim=args['embedding_dim'], window_size=args["window"], output=1, training=True, lstm_type=args["lstm_type"], name="DASAGE")
     elif args["model_architecture"] == "DCSAGE_GRU":
@@ -64,26 +63,23 @@ def get_rolling_window_preds(args, SAVE_PATH, perturbed_dataloaders, unperturbed
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
 
-    ##############################################
-    # Get predictions for one model on all windows
-    ##############################################
+    # ============ Get model predictions across all dataset windows ============
     recur_pred_window = args["recursive_pred_len"]
     roll_win_one_model_pert_list = []
     roll_win_one_model_unpert_list = []
     
     for roll_win_idx in range(len(unperturbed_dataloader.dataset) - recur_pred_window - args["window"]):
-        # print("Processing rolling window idx", roll_win_idx)
-        perturb_df_nested_lists = generate_perturbed_recursive_pred_dfs(
+        perturb_df_nested_lists = perturbed_recursive_prediction_helper(
             model, perturbed_dataloaders, args, SAVE_PATH, 
             model_idx=model_idx, 
             overwrite_window_idx=roll_win_idx,
-            save_plot=False)  # (10, 10, 30, 4) - pert, country, len_rec_pred, columns
+            save_plot=False)  # [10, 10, 30, 4] = [perturbed_loaders, continents, recursive_pred_len, prediction_type]
         
-        regular_df_nested_lists = generate_regular_recursive_pred_df(
+        regular_df_nested_lists = unperturbed_recursive_prediction_helper(
             model, unperturbed_dataloader, args, SAVE_PATH, 
             model_idx=model_idx, 
             overwrite_window_idx=roll_win_idx,
-            save_plot=False)  # (10, 30, 4) - country, len_rec_pred, columns
+            save_plot=False)  # [10, 30, 4] = [continents, recursive_pred_len, prediction_type]
 
         roll_win_one_model_pert_list.append(perturb_df_nested_lists)
         roll_win_one_model_unpert_list.append(regular_df_nested_lists)
@@ -99,24 +95,29 @@ def collect_results(result):
 
 def main():
     """
-    This function is the main driver of the program. It will create 10 perturbed dataloaders (1 for each country
-    in graph that is perturbed), as well as 1 unperturbed dataloader. It will then create a Python multiprocessing
-    pool to parallelize the node perturbation code for multiple graph models.
+    This function is the main driver of the program. It will create 10 perturbed dataloaders 
+    (1 for each country in graph that is perturbed), as well as 1 unperturbed dataloader. It 
+    will then create a Python multiprocessing pool to parallelize the node perturbation code 
+    for multiple graph models.
 
-    One process will be created for each model that we want to run node perturbation on, and the process will apply
-    this model to get prediction across all rolling windows. A callback function will be called when each process
-    completed to collect the results from child processes, and once all child processes are finished the collected
-    results (which may be out of order, since we use multiprocessing.apply_async() here) will be sorted to be in
-    model order. The resulting array here will be shape (482, 100, 10, 10, 30, 4) for roll_win_pert_pred_nested_list 
-    and (482, 100, 10, 30, 4) for roll_win_unpert_pred_nested_list.
+    One process will be created for each model that we want to run node perturbation on, and 
+    the process will apply this model to get prediction across all rolling windows. A callback 
+    function will be called when each process completed to collect the results from child 
+    processes, and once all child processes are finished the collected results (which may be 
+    out of order, since we use multiprocessing.apply_async() here) will be sorted to be in 
+    model order. The resulting array here will be shape 
+    [num_windows, num_models, num_perturbed_continents, num_continents, recursive_pred_len, 4] 
+    for roll_win_pert_pred_nested_list and 
+    [num_windows, num_models, num_continents, recursive_pred_len, 4] for 
+    roll_win_unpert_pred_nested_list.
 
-    Once roll_win_pert_pred_nested_list and roll_win_unpert_pred_nested_list have been reassembled, then the 
-    remainder of this function will create save directories and save the two large arrays, and then print out
-    the total runtime of this script.
+    Once roll_win_pert_pred_nested_list and roll_win_unpert_pred_nested_list have been 
+    reassembled, then the remainder of this function will create save directories and save the 
+    two large arrays, and then print out the total runtime of this script.
     """
     print("Parent process", os.getpid())
 
-    # Define 10 perturbed dataloaders
+    # ============ Define perturbed and unperturbed dataloaders ============
     perturbed_dataloaders = []
     for idx in range(10):
         dataset_unsmooth = Covid10CountriesPerturbedDataset(
@@ -138,9 +139,7 @@ def main():
     
     total_start_time = time.time()
 
-    ##########################################################
-    # Multiprocessing, each model becomes one separate process
-    ##########################################################
+    # ============ Multiprocessing handler ============
     num_cpus = mp.cpu_count() - 2
     with mp.Pool(processes=num_cpus) as pool:
         for model_idx in range(args["num_models"]):
@@ -150,16 +149,16 @@ def main():
                 callback=collect_results)
         pool.close()
         pool.join()
-    # get_rolling_window_preds(args, SAVE_PATH, perturbed_dataloaders, unperturbed_dataloader, 1)
 
-    # Callback has collected results from child processes, sort now by model index in tuple
-    model_process_results.sort(key=lambda x: x[0])  # Sorting by model index in tuple. Model_process_results is (100, tuple of (model_idx, pert_list, unpert_list))
+    # ============ Collect resulting arrays from child processes ============
+    model_process_results.sort(key=lambda x: x[0])  # Sorting by model index in tuple
     roll_win_pert_pred_nested_list = []
     roll_win_unpert_pred_nested_list = []
     
+    # ============ Rearrange sorted resulting arrays into shape of overall prediction array ============
     for roll_win_idx in range(len(unperturbed_dataloader.dataset) - args["recursive_pred_len"] - args["window"]):
-        model_pert_sublist = []  # Make (100, 10, 10, 30, 4) for this rolling window
-        model_unpert_sublist = []  # Make (100, 10, 30, 4) for this rolling window
+        model_pert_sublist = []  # Make [100, 10, 10, 30, 4] for this rolling window
+        model_unpert_sublist = []  # Make [100, 10, 30, 4] for this rolling window
         for model_idx in range(args["num_models"]):
             model_pert_sublist.append(model_process_results[model_idx][1][roll_win_idx])
             model_unpert_sublist.append(model_process_results[model_idx][2][roll_win_idx])
@@ -177,7 +176,7 @@ if __name__ == "__main__":
     mp.set_start_method('spawn')
     with open("./explainability/node_perturbation/node_perturb_analysis_config.json", "r") as f:
         args = json.load(f)
-    args["num_models"] = 4  # 100
+    args["num_models"] = 100
 
     if not os.path.exists(args["save_dir"]):
         os.mkdir(args["save_dir"])
