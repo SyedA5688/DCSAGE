@@ -4,10 +4,30 @@ from torch.utils.data import Dataset
 
 
 class Covid10CountriesPerturbedDataset(Dataset):
+    """
+    This dataloader follows the training dataloader, but applies a combination of perturbations
+    on the incoming and outgoing edges of nodes in the graph specified by the parameter
+    perturb_node_steps. This is meant for use in perturbation policy exploration experiments.
+
+    Args:
+    - dataset_npz_path: Path to numpy zip npz file containing node feature information
+    - window_size: Number of previous days to feed into network before predicting next day.
+    - split: Portion of dataset to load for this dataset object (default for node perturbation: entire-dataset-smooth)
+    - avg_graph_structure: Whether or not to load averaged graph edges over the window
+    - perturb_node_steps: list of length num_nodes, with each list element being a negative decimal
+            in range [-1, 0] indicating the reduction to be applied to the corresponding node. For
+            example, -0.25 in position 1 indicates that incoming and outgoing edge weights for the
+            first node in the graph should be decreased by 25%.
+
+    returns:
+    - __getitem__() will return four things:
+        1. Numpy matrix shape (window_size, num_nodes, num_features) of node feature data
+        2. Numpy matrix shape (window_size, max_num_edges=100, num_edge_features) of edge attribute data
+        3. Numpy matrix shape (window_size, 2, max_num_edges=100) of edge indices
+        4. Numpy matrix shape (num_nodes,) of labels
+    """
     def __init__(self, dataset_npz_path, SENSITIVITY_ORDER_IDX, window_size=7, data_split="entire-dataset-smooth", avg_graph_structure=False, perturb_node_steps=[-0.25,0,0,0,0,0,0,0,0,0]):
-        ###########
-        # Load data
-        ###########
+        # ============ Load data ============
         if data_split == "entire-dataset-smooth" and not avg_graph_structure:
             feature_matrix = np.load(dataset_npz_path)["feature_matrix_smooth"]
             flight_matrix = np.load(dataset_npz_path)["flight_matrix_log10_scaled"]
@@ -19,9 +39,7 @@ class Covid10CountriesPerturbedDataset(Dataset):
         
         assert feature_matrix.shape[0] == flight_matrix.shape[0], "Node feature and edge attribute matrices do not match"
         
-        ################################################################
-        # Perturb chosen country by deleting incoming and outgoing edges
-        ################################################################
+        # ============ Perturb chosen country: delete incoming and outgoing edges ============
         for node_idx, perturb_step in zip(SENSITIVITY_ORDER_IDX, perturb_node_steps):
             flight_matrix[:, node_idx, :] *= (1 + perturb_step)
             flight_matrix[:, :, node_idx] *= (1 + perturb_step)
@@ -29,9 +47,7 @@ class Covid10CountriesPerturbedDataset(Dataset):
         self.feature_matrix = feature_matrix
         self.flight_matrix = flight_matrix
 
-        ###############################
-        # Create sliding window dataset
-        ###############################
+        # ============ Create sliding window dataset ============
         all_window_node_feat = []
         all_window_edge_attr = []
         all_window_edge_idx = []
@@ -49,9 +65,8 @@ class Covid10CountriesPerturbedDataset(Dataset):
                 edges_attr_array = np.full((100), -1).astype(np.float32)
                 
                 if avg_graph_structure:
-                    # Calculate smoothened graph structure across window
-                    smoothened_window_flight_matrix = flight_matrix[day_idx: day_idx + window_size].mean(axis=0)  # Shape [10, 10]
-                    # Log10 scale now that adjacency is averaged
+                    # Log base 10 scaling is done after averaging graph structure if avg_graph_structure is set to true
+                    smoothened_window_flight_matrix = flight_matrix[day_idx: day_idx + window_size].mean(axis=0)
                     for row in range(len(smoothened_window_flight_matrix)):
                         for col in range(len(smoothened_window_flight_matrix[row])):
                             if smoothened_window_flight_matrix[row][col] > 0:
@@ -61,8 +76,8 @@ class Covid10CountriesPerturbedDataset(Dataset):
                     for row in range(len(smoothened_window_flight_matrix)):
                         for col in range(len(smoothened_window_flight_matrix[row])):
                             if smoothened_window_flight_matrix[row][col] > 0:
-                                edges_idx_array[0][edge_idx] = row  # row is source node
-                                edges_idx_array[1][edge_idx] = col  # col is dest node
+                                edges_idx_array[0][edge_idx] = row
+                                edges_idx_array[1][edge_idx] = col
                                 edges_attr_array[edge_idx] = smoothened_window_flight_matrix[row][col]
                                 edge_idx += 1
                 else:
@@ -81,10 +96,10 @@ class Covid10CountriesPerturbedDataset(Dataset):
                 window_edge_idx.append(np.expand_dims(edges_idx_array, axis=0))
                 window_edge_attr.append(np.expand_dims(edges_attr_array, axis=0))
             
-            window_node_feat = np.concatenate(window_node_feat, axis=0)  # shape (14, 10, 3)
-            window_edge_idx = np.concatenate(window_edge_idx, axis=0)  # Shape (14, 2, *num_edges=100)
-            window_edge_attr = np.concatenate(window_edge_attr, axis=0)  # Shape (14, *num_edges=100, 1)
-            window_labels = feature_matrix[day_idx + window_size, :, 1]  # Shape (10)
+            window_node_feat = np.concatenate(window_node_feat, axis=0)
+            window_edge_idx = np.concatenate(window_edge_idx, axis=0)
+            window_edge_attr = np.concatenate(window_edge_attr, axis=0)
+            window_labels = feature_matrix[day_idx + window_size, :, 1]
 
             all_window_node_feat.append(np.expand_dims(window_node_feat, axis=0))
             all_window_edge_attr.append(np.expand_dims(window_edge_attr, axis=0))
@@ -92,18 +107,18 @@ class Covid10CountriesPerturbedDataset(Dataset):
             all_window_labels.append(np.expand_dims(window_labels, axis=0))
         
         self.all_window_node_feat = np.concatenate(all_window_node_feat, axis=0)
-        self.all_window_edge_attr = np.concatenate(all_window_edge_attr, axis=0)
-        self.all_window_edge_idx = np.concatenate(all_window_edge_idx, axis=0)
-        self.all_window_labels = np.concatenate(all_window_labels, axis=0)  # shape (dataset_len, 10)
+        self.all_window_edge_attr = np.concatenate(all_window_edge_attr, axis=0)  # shape [num_windows, window_len, num_features, max_num_edges]
+        self.all_window_edge_idx = np.concatenate(all_window_edge_idx, axis=0)  # shape [num_windows, window_len, max_num_edges, num_edge_features]
+        self.all_window_labels = np.concatenate(all_window_labels, axis=0)  # shape (num_windows, num_nodes)
 
     def __len__(self):
         return len(self.all_window_labels)
     
     def __getitem__(self, index):
-        window_node_feat = self.all_window_node_feat[index].astype(np.float32)  # shape (14, 10, 3)
-        window_edge_idx = self.all_window_edge_idx[index]  # shape (14, 2, *num_edges=100)
+        window_node_feat = self.all_window_node_feat[index].astype(np.float32)
+        window_edge_idx = self.all_window_edge_idx[index]
         window_edge_idx = torch.LongTensor(window_edge_idx)
-        window_edge_attr = self.all_window_edge_attr[index]  # shape (14, *num_edges=100, 1)
-        window_labels = self.all_window_labels[index]  # shape (10)
+        window_edge_attr = self.all_window_edge_attr[index]
+        window_labels = self.all_window_labels[index]
         
         return window_node_feat[:,:,1:2], window_edge_idx, window_edge_attr, window_labels
