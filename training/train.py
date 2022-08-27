@@ -315,7 +315,7 @@ def main():
     
     log_string("Training took %s seconds" % (time.time() - start_time))
     
-    # Only continue to run test on train/val/test if a best validation model was saved, otherwise exit.
+    # Exit if a best validation model was not saved
     assert os.path.isfile(os.path.join(SAVE_PATH, "best_model.pth")), "No best model was saved, exiting without running test on any dataset split."
     
     # ============ Create directories for test evaluations ============
