@@ -7,16 +7,18 @@ Official PyTorch implementation of DCSAGE and DCGAT from *Deep Learning-Derived 
 
 ## Training
 ### Getting Started
-This codebase was developed using Python 3.8.12 and PyTorch 1.8.0. To reproduce the environment, install dependencies through either anaconda or pip:
+This codebase was developed using Python 3.8.12 and PyTorch 1.8.0. To reproduce the environment, install dependencies through either anaconda (preferred) or pip (just use pip install command):
 
 ```
-conda env create -f environment.yml
-```
-
-or
-
-```
+conda env create -n DCSAGE python=3.8
+conda activate DCSAGE
+conda install pytorch==1.8.0 -c pytorch
 pip install -r requirements.txt
+```
+
+and then set the PYTHONPATH to the base directory of the repository (important for imports to work correctly):
+```
+export PYTHONPATH="/path/to/base/DCSAGE/directory" 
 ```
 
 
@@ -28,15 +30,12 @@ cd training
 python train.py
 ```
 
-For training multiple DCSAGE models, define the number of models (e.g. 100) in ./training/train_multiple_models.py and run:
+For training multiple DCSAGE models, define the number of models (e.g. 100) in training/train_multiple_models.py and run:
 
 ```
 cd training
 python train_multiple_models.py
 ```
-
-Note: For directory imports to work correctly, be sure to set your current 
-working directory to the top directory in this repository.
 
 
 ### DCSAGE Node Perturbation

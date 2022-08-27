@@ -21,6 +21,7 @@ from models.dcgin import DCGIN
 from models.dcgat import DCGAT
 from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
 
+os.chdir("..")  # Change current working directory to parent directory of GitHub repository
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -319,7 +320,6 @@ def main():
     
     # ============ Create directories for test evaluations ============
     os.mkdir(os.path.join(SAVE_PATH, "test_unsmooth"))  # Test on unsmoothened data
-    os.mkdir(os.path.join(SAVE_PATH, "test_smooth"))  # Test on smoothened data
     os.mkdir(os.path.join(SAVE_PATH, "validation"))
     os.mkdir(os.path.join(SAVE_PATH, "training"))
 
@@ -340,9 +340,9 @@ def main():
 
 if __name__ == "__main__":
     # ============ Read in training options from config file ============
-    with open("./training/training_config.json", "r") as f:
+    with open("training/training_config.json", "r") as f:
         args = json.load(f)
-    args["save_dir"] = "./training/training-runs"
+    args["save_dir"] = "training/training-runs/"
     
     assert args["model_architecture"] in ["DCSAGE", "DCSAGE_v2", "DCGAT", "DCSAGE_Temporal_Attn", "DCGCN", "DCGIN", "DCSAGE_GRU"]
     
