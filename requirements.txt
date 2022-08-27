@@ -1,4 +1,3 @@
-appnope @ file:///Users/runner/miniforge3/conda-bld/appnope_1635819899231/work
 argon2-cffi @ file:///Users/runner/miniforge3/conda-bld/argon2-cffi_1636021712888/work
 async-generator==1.10
 attrs @ file:///home/conda/feedstock_root/build_artifacts/attrs_1620387926260/work
