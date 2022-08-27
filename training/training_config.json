@@ -13,7 +13,7 @@
   "model_architecture": "DCSAGE",
   "num_node_features": 1,
   "optimizer": "Adam",
-  "save_dir": "./training-runs-multiple-models",
+  "save_dir": "training/training-runs-multiple-models",
   "visual_freq": 5,
   "window": 7
 }

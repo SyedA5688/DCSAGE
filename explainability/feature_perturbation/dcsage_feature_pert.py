@@ -13,6 +13,8 @@ from dataloader.feature_perturbation_dataloader import CovidUnperturbedDataset, 
 from models.dcsage import DynamicAdjSAGE
 
 
+os.chdir("../..")  # Change current working directory to parent directory of GitHub repository
+
 def get_rolling_window_preds(args, SAVE_PATH, unperturbed_dataloader, min_containment_dataloader, max_containment_dataloader, model_idx):
     """
     Goal of function:
@@ -217,7 +219,7 @@ def main():
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
-    with open("./explainability/feature_perturbation/feature_pert_config.json", "r") as f:
+    with open("explainability/feature_perturbation/feature_pert_config.json", "r") as f:
         args = json.load(f)
 
     if not os.path.exists(args["save_dir"]):
@@ -228,11 +230,11 @@ if __name__ == "__main__":
         os.mkdir(SAVE_PATH)
         os.mkdir(os.path.join(SAVE_PATH, "python_file_saves"))
     
-    os.system("cp feature_pert_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp dcsage_feature_pert.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp covid_feat_perturb_dataset.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp dcsage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
-    os.system("cp weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/feature_perturbation/feature_pert_config.json {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/feature_perturbation/dcsage_feature_pert.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/feature_perturbation/covid_feat_perturb_dataset.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/feature_perturbation/dcsage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
+    os.system("cp explainability/feature_perturbation/weight_sage.py {}".format(os.path.join(SAVE_PATH, "python_file_saves")))
 
     main()
 

@@ -18,6 +18,7 @@ from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
 from dataloader.node_perturbation_dataloader import Covid10CountriesUnperturbedDataset, Covid10CountriesPerturbedDataset
 from node_perturbation_helper_methods import perturbed_recursive_prediction_helper, unperturbed_recursive_prediction_helper
 
+os.chdir("../..")  # Change current working directory to parent directory of GitHub repository
 chosen_seed = 0
 seed(chosen_seed)
 np.random.seed(chosen_seed)
@@ -174,7 +175,7 @@ def main():
 
 if __name__ == "__main__":
     mp.set_start_method('spawn')
-    with open("./explainability/node_perturbation/node_perturb_analysis_config.json", "r") as f:
+    with open("explainability/node_perturbation/node_perturb_analysis_config.json", "r") as f:
         args = json.load(f)
     args["num_models"] = 100
 

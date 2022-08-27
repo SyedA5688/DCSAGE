@@ -20,6 +20,7 @@ from models.dcgcn import DCGCN
 from models.dcgin import DCGIN
 from models.dcsage_temporal_attn import DCSAGE_Temporal_Attn
 
+os.chdir("..")  # Change current working directory to parent directory of GitHub repository
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -316,7 +317,7 @@ if __name__ == "__main__":
 
     # ============ Read in training options from config file ============
     print("Parent process", os.getpid())
-    with open("./training/training_config.json", "r") as f:
+    with open("training/training_config.json", "r") as f:
         args = json.load(f)
 
     # Define number of models to train

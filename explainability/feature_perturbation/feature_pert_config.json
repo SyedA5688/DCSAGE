@@ -2,7 +2,7 @@
     "avg_graph_structure": false,
     "analysis_desc": "",
     "batch_size": 800,
-    "dataset_npz_path": "./data/10_continents_dataset_v19_node_pert.npz",
+    "dataset_npz_path": "data/10_continents_dataset_v19_node_pert.npz",
     "dataset_split": "entire-dataset-smooth",
     "embedding_dim": 10,
     "lstm_type": "vanilla",
@@ -10,8 +10,8 @@
     "num_models": 100,
     "num_node_features": 2,
     "recursive_pred_len": 30,
-    "save_dir": "./explainability/feature_perturbation/feature-pert-runs",
-    "training_path": "./training/training-runs-multiple-models/",
+    "save_dir": "explainability/feature_perturbation/feature-pert-runs",
+    "training_path": "training/training-runs-multiple-models/",
     "training_run": "2022-06-19-17_25_11",
     "window": 7
 }

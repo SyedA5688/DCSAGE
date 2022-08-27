@@ -11,6 +11,8 @@ from torch_geometric.data import Data
 from models.dcsage import DynamicAdjSAGE
 from dataloader.perturbation_policy_dataloader import Covid10CountriesPerturbedDataset
 
+os.chdir("../..")  # Change current working directory to parent directory of GitHub repository
+
 
 #######################
 # Parallelized function
@@ -131,7 +133,7 @@ def main():
     all_dataloaders = []
 
     unpert_dataset = Covid10CountriesPerturbedDataset(
-        dataset_npz_path="./10_continents_dataset_v19_node_pert.npz",
+        dataset_npz_path="data/10_continents_dataset_v19_node_pert.npz",
         SENSITIVITY_ORDER_IDX=SENSITIVITY_ORDER_IDX,
         window_size=WINDOW_SIZE,
         data_split="entire-dataset-smooth",
@@ -150,7 +152,7 @@ def main():
                 perturb_node_steps[idx] = val
 
             dataset = Covid10CountriesPerturbedDataset(
-                dataset_npz_path="./10_continents_dataset_v19_node_pert.npz",
+                dataset_npz_path="data/10_continents_dataset_v19_node_pert.npz",
                 SENSITIVITY_ORDER_IDX=SENSITIVITY_ORDER_IDX,
                 window_size=WINDOW_SIZE,
                 data_split="entire-dataset-smooth",
